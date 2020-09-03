@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd 
+import time 
 class PlatForm:
     def __init__(self,players,num_rounds=100000):
         self.num_player=len(players)
@@ -11,7 +12,8 @@ class PlatForm:
         self.players=[player.para(Id,self.num_player,self.rounds) for Id,player in enumerate(players) ]
         
     def run(self):
-        test=np.zeros((self.rounds//1000,self.num_player-1)) #just for the graph
+        start_time=time.time()
+        record=np.zeros((self.rounds//1000,self.num_player-1)) #just for the graph
         for k in range(self.rounds):
             self.bet_result[:]=0
             # for all practical purposes, 16 suffices
@@ -30,15 +32,15 @@ class PlatForm:
             self.bet_history=[(winner,np.copy(self.order),np.copy(self.bet_result),np.copy(self.cards))]
             self.rewards[self.order[winner]]+=self.turn_reward
             if k%1000==0:
-                test[k//1000][:]=self.rewards[:self.num_player-1]/self.rewards[-1]
+                record[k//1000][:]=self.rewards[:self.num_player-1]/self.rewards[-1]
                 if k%10000==0:
                     self.turn_reward+=1
-                    print('%s rounds done'%k)
-        return self.rewards[:self.num_player-1]/self.rewards[-1] , pd.DataFrame(test)
+                    print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
+        return self.rewards[:self.num_player-1]/self.rewards[-1] , pd.DataFrame(record)
             
     def deal(self,i):
         strategy=self.players[self.order[i]] 
-        strategy.calibration(i,self.order,self.bet_history,self.bet_result)
+        strategy.calibration(i,self.order,self.bet_history,self.bet_result,self.turn_reward)
         # if the decision made does not depend on the sequence, to make it faster you can use the
         # part 2 lines instead
         #---------------------------------

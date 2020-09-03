@@ -33,7 +33,7 @@ class RandomStrategy:
         self.num=num_players
         self.p=0
         return self
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         if self.type==0:
             self.p=np.random.sample()
         elif self.type==1:
@@ -41,9 +41,8 @@ class RandomStrategy:
         elif self.type==2:
             self.p=max(np.random.sample(),max(result))
         elif self.type==3:
-            self.p=max(result)
-            self.p+=(1-self.p)*0.1
-        if self.switch and self.count%500000==0:
+            self.p=0.5
+        if self.switch and self.count%50000==0:
             self.type=np.random.randint(4)
     def decision(self,hand):
         self.count+=1
@@ -58,7 +57,7 @@ class DealerStrategy:
     def para(self,i,num_players,rounds):
         self.num_players=num_players
         return self 
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         self.p=max(result)
     def decision(self,hand):
         if hand<self.p:
@@ -74,7 +73,7 @@ class HuristicStrategy:
         self.num_players=num_players
         return self 
         
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         self.p=max(max(result)+self.naive,0.5)
         self.p+=(1-self.p)*self.naive*np.random.sample()
 
@@ -93,7 +92,7 @@ class StatisticalStrategy:
         self.record=np.zeros(num_players)
         self.rounds=rounds 
         return self 
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         if self.count>0:
             w=history[-1][0]
             self.record[w]+=self.rate*(history[-1][2][w]-self.record[w])
@@ -116,7 +115,7 @@ class NashEquilibrium:
     def para(self,i,num_players,rounds):
         self.threshold=solution(num_players)[:,0]*self.multiplier
         return self 
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         self.p=max(max(result),self.threshold[i])
     def decision(self,hand):
         if hand<self.p:
@@ -135,7 +134,7 @@ class AdaptiveNasheqilibrium:
         self.profiles=np.zeros(num_players,dtype=int)
         self.record=[]
         return self 
-    def calibration(self,rank,order,history,result):
+    def calibration(self,rank,order,history,result,turn_reward):
         self.count+=1
         if len(history)>0:
             his_order,his_res,his_cards=history[-1][1:]
@@ -314,7 +313,7 @@ class AdaptiveStrategy:
         self.profiles[Id]=None 
         self.num_players=num_players
         return self 
-    def calibration(self,i,order,history,result):
+    def calibration(self,i,order,history,result,turn_reward):
         self.iscooldown=False 
         if len(history)>0:
             od,res,cards=history[-1][1:]
@@ -360,7 +359,7 @@ class AdaptiveStrategy:
 
 
 class ReinforcementLearning:
-    def __init__(self,rl_type,exploration=0.15,c=2,a=0.1,baseline=4):
+    def __init__(self,rl_type,exploration=0.15,init_reward=2,c=2,a=0.1,baseline=4):
         self.count=0
         self.type=rl_type
         self.last_choice=None
@@ -368,25 +367,24 @@ class ReinforcementLearning:
         self.c=c 
         self.a=a 
         self.baseline=baseline 
-        
+        self.init_reward=init_reward 
 
 
     def para(self,i,num_players,rounds):
         self.id=i 
         self.num_players=num_players
         self.threshold=solution(num_players)[:,0]
-        self.bandits_rewards=np.zeros((self.num_players,21))+10
-        self.bandits_num=np.zeros((self.num_players,21),dtype=int)+1 
+        self.bandits_rewards=np.zeros((self.num_players,31))+self.init_reward
+        self.bandits_num=np.zeros((self.num_players,31),dtype=int)+1 
         if self.type==2:
-            self.H=np.zeros((self.num_players,21))+self.baseline
-            self.dist=np.zeros((self.num_players,21))+1/21
+            self.H=np.zeros((self.num_players,31))+self.baseline
+            self.dist=np.zeros((self.num_players,31))+1/31
         return self 
 
-    def calibration(self,rank,order,history,result):
+    def calibration(self,rank,order,history,result,turn_reward):
         self.count+=1
-        if self.count%50000==0:
-            self.exploration*=0.97
-            self.a*=0.95
+        if self.count%10000==0:
+            self.exploration*=0.95
         if len(history)>0:
             winner,od=history[-1][:2]
             i,c=self.last_choice
@@ -407,7 +405,7 @@ class ReinforcementLearning:
             self.gradient(rank)
         self.bandits_num[rank,self.choice]+=1
         self.last_choice=(rank,self.choice)
-        self.p=max(self.p,self.threshold[rank]+0.005*(self.choice-10)*0.93**rank)
+        self.p=max(self.p,self.threshold[rank]+0.005*(self.choice-15)*0.93**rank)
     
         
     def decision(self,hand):
@@ -417,7 +415,7 @@ class ReinforcementLearning:
 
     def UCB(self,rank):
         if np.random.sample()<self.exploration:
-            self.choice=np.random.randint(21)
+            self.choice=np.random.randint(31)
         else:
             self.choice=np.argmax(self.bandits_rewards[rank]+self.c*np.sqrt(np.log(self.count)/self.bandits_num[rank]))
    
@@ -425,7 +423,7 @@ class ReinforcementLearning:
 
     def greedy(self,rank):
         if np.random.sample()<self.exploration:
-            self.choice=np.random.randint(21)
+            self.choice=np.random.randint(31)
         else:
             self.choice=np.argmax(self.bandits_rewards[rank])
         
@@ -433,7 +431,7 @@ class ReinforcementLearning:
     def gradient(self,rank):
         self.dist[rank]=np.exp(self.H[rank])
         self.dist[rank]/=sum(self.dist[rank])
-        self.choice=np.random.choice(21,1,p=self.dist[rank])
+        self.choice=np.random.choice(31,1,p=self.dist[rank])
         
 
         
