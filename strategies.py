@@ -35,14 +35,14 @@ class RandomStrategy:
         return self
     def calibration(self,i,order,history,result,turn_reward):
         if self.type==0:
-            self.p=np.random.sample()
+            self.p=0.57
         elif self.type==1:
             self.p=np.random.uniform(max(result),1)
         elif self.type==2:
             self.p=max(np.random.sample(),max(result))
         elif self.type==3:
             self.p=0.5
-        if self.switch and self.count%50000==0:
+        if self.switch and self.count%100000==0:
             self.type=np.random.randint(4)
     def decision(self,hand):
         self.count+=1
@@ -51,18 +51,7 @@ class RandomStrategy:
         return False
 
 #---------------------------------------------------------------------------------------------------------
-class DealerStrategy:
-    def __init__(self):
-        pass
-    def para(self,i,num_players,rounds):
-        self.num_players=num_players
-        return self 
-    def calibration(self,i,order,history,result,turn_reward):
-        self.p=max(result)
-    def decision(self,hand):
-        if hand<self.p:
-            return True
-        return False
+
 
 #-------------------------------------------------------------------------------------------------------------     
 
@@ -97,7 +86,7 @@ class StatisticalStrategy:
             w=history[-1][0]
             self.record[w]+=self.rate*(history[-1][2][w]-self.record[w])
         self.count+=1
-        self.rate*=(1-1/(1+2*self.count))
+        self.rate*=(1-1/(1+self.count))
         self.p=max(self.record[i],max(result))
     def decision(self,hand):
         if hand<self.p:
@@ -124,6 +113,9 @@ class NashEquilibrium:
 
 #--------------------------------------------------------------------------------------------------------
 class AdaptiveNasheqilibrium:
+    """ This strategy make the assumption that a player either plays Nash Equilibrium 
+    or play a threshold uniformly chosen in [0,1]
+    """
     def __init__(self,confidence_level=1500):
         self.confidence_level=confidence_level
         self.count=0
@@ -334,6 +326,8 @@ class AdaptiveStrategy:
                 if not ( (self.profiles[order[j]].pt_established) or (self.profiles[order[j]].lowbd_established)):
                     num+=1
             self.p=max(max(result),self.nashequilibrum[i,num])
+        elif i==self.num_players-1:
+            self.p=max(result)
         else:
             W=np.ones(self.grid)
             for j in range(i+1,self.num_players):
@@ -373,7 +367,7 @@ class ReinforcementLearning:
     def para(self,i,num_players,rounds):
         self.id=i 
         self.num_players=num_players
-        self.threshold=solution(num_players)[:,0]
+        self.threshold=L[-num_players:]
         self.bandits_rewards=np.zeros((self.num_players,31))+self.init_reward
         self.bandits_num=np.zeros((self.num_players,31),dtype=int)+1 
         if self.type==2:
@@ -385,7 +379,7 @@ class ReinforcementLearning:
         self.count+=1
         if self.count%10000==0:
             self.exploration*=0.95
-        if len(history)>0:
+        if self.last_choice:
             winner,od=history[-1][:2]
             i,c=self.last_choice
             if od[winner]==self.id:
@@ -397,15 +391,22 @@ class ReinforcementLearning:
                 self.H[i]-=self.a*(r-self.bandits_rewards[i][c]*self.dist[i])
                 self.H[i][c]+=self.a*(r-self.bandits_rewards[i][c])
         self.p=max(result)
-        if self.type==0:
-            self.greedy(rank)
-        elif self.type==1:
-            self.UCB(rank)
+        if rank==self.num_players-1: 
+            self.last_choice=None 
         else:
-            self.gradient(rank)
-        self.bandits_num[rank,self.choice]+=1
-        self.last_choice=(rank,self.choice)
-        self.p=max(self.p,self.threshold[rank]+0.005*(self.choice-15)*0.93**rank)
+            if self.type==0:
+                self.greedy(rank)
+            elif self.type==1:
+                self.UCB(rank)
+            else:
+                self.gradient(rank)
+            new_p=self.threshold[rank]-0.0015*self.choice*0.9**rank
+            if new_p>self.p:
+                self.bandits_num[rank,self.choice]+=1
+                self.last_choice=(rank,self.choice)
+                self.p=new_p
+            else:
+                self.last_choice=None 
     
         
     def decision(self,hand):

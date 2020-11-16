@@ -13,12 +13,12 @@ class PlatForm:
         
     def run(self):
         start_time=time.time()
-        record=np.zeros((self.rounds//1000,self.num_player-1)) #just for the graph
+        record=np.zeros((self.rounds//1000,self.num_player)) #just for the graph
         for k in range(self.rounds):
             self.bet_result[:]=0
             # for all practical purposes, 16 suffices
             self.cards=np.cumsum(np.random.sample((self.num_player,16)),axis=1)
-            self.order=np.append(np.random.permutation(self.num_player-1),self.num_player-1)
+            self.order=np.random.permutation(self.num_player)
             for i in range(self.num_player):
                 self.deal(i)
             winner=np.argmax(self.bet_result)
@@ -32,11 +32,10 @@ class PlatForm:
             self.bet_history=[(winner,np.copy(self.order),np.copy(self.bet_result),np.copy(self.cards))]
             self.rewards[self.order[winner]]+=self.turn_reward
             if k%1000==0:
-                record[k//1000][:]=self.rewards[:self.num_player-1]/self.rewards[-1]
+                record[k//1000][:]=self.rewards[:self.num_player]/k
                 if k%10000==0:
-                    self.turn_reward+=1
                     print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
-        return self.rewards[:self.num_player-1]/self.rewards[-1] , pd.DataFrame(record)
+        return self.rewards[:self.num_player]/self.rounds, pd.DataFrame(record)
             
     def deal(self,i):
         strategy=self.players[self.order[i]] 
