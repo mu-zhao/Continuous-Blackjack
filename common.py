@@ -13,7 +13,7 @@ class PlatForm:
         
     def run(self):
         start_time=time.time()
-        record=np.zeros((self.rounds//1000,self.num_player)) #just for the graph
+        record=np.zeros((self.rounds//10000,self.num_player)) #just for the graph
         for k in range(self.rounds):
             self.bet_result[:]=0
             # for all practical purposes, 16 suffices
@@ -31,10 +31,10 @@ class PlatForm:
             # part 2
             self.bet_history=[(winner,np.copy(self.order),np.copy(self.bet_result),np.copy(self.cards))]
             self.rewards[self.order[winner]]+=self.turn_reward
-            if k%1000==0:
-                record[k//1000][:]=self.rewards[:self.num_player]/k
-                if k%10000==0:
-                    print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
+            if k%10000==0:
+                record[k//10000][:]=self.rewards[:self.num_player]/k
+                #if k%10000==0:
+                #    print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
         return self.rewards[:self.num_player]/self.rounds, pd.DataFrame(record)
             
     def deal(self,i):

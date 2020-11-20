@@ -6,7 +6,8 @@ import numpy as np
 #----------------------------------------------------------------------
 def f(x,i,j):
     return (1-(1-x)*np.exp(x))**(i-j)*(2-np.e-x+np.exp(x))**j
-
+def f1(x):
+    return 1-(1-x)*np.exp(x)
 def I(A,i,j):
     return f(A,i,j)-quad(f,A,1,args=(i,j))[0]
 
@@ -35,7 +36,7 @@ class RandomStrategy:
         return self
     def calibration(self,i,order,history,result,turn_reward):
         if self.type==0:
-            self.p=0.57
+            self.p=np.random.sample()
         elif self.type==1:
             self.p=np.random.uniform(max(result),1)
         elif self.type==2:
@@ -74,6 +75,8 @@ class HuristicStrategy:
 #-------------------------------------------------------------------------------------------------------------
 
 class StatisticalStrategy:
+    """ does not work really.
+    """
     def __init__(self,rate):
         self.rate=rate 
         self.count=0
@@ -99,10 +102,12 @@ class StatisticalStrategy:
 
 
 class NashEquilibrium:
-    def __init__(self,multiplier=1):
-        self.multiplier=multiplier
+    """ Nash equilibrium scaled by factor
+    """
+    def __init__(self,factor=1):
+        self.factor=factor
     def para(self,i,num_players,rounds):
-        self.threshold=solution(num_players)[:,0]*self.multiplier
+        self.threshold=solution(num_players)[:,0]*self.factor
         return self 
     def calibration(self,i,order,history,result,turn_reward):
         self.p=max(max(result),self.threshold[i])
@@ -149,11 +154,59 @@ class AdaptiveNasheqilibrium:
             
 
 #-----------------------------------------------------------------------------------------------------------
+class ModelfreeStrategy:
+    """ This strategy is the most applicable one. 
+    """
+    def __init__(self,size=1000,initial_count=2,extrapolation_decay_factor=0.8,extrapolation_range=5):
+        self.m=size # discretization size 
+        self.init_count=initial_count
+        self.decay_factor=0.9
+        self.e=np.exp(np.arange(self.m)/self.m)
+        self.range=extrapolation_range
+        self.xp=extrapolation_decay_factor**abs(np.arange(-extrapolation_range,extrapolation_range+1))
+    def para(self,i,num_players,rounds):
+        self.num_players=num_players
+        self.id=i
+        self.P={}# profiles
+        for j in range(num_players):
+            if j!=self.id:
+                self.P[j]=[np.zeros((num_players,self.m)),np.zeros((num_players,self.m))+self.init_count]
+                #self.P[j][:]=self.g 
+        return self 
+    def calibration(self,rank,order,history,result,turn_reward):
+        if len(history)>0:
+            position,scores=history[-1][1:3]# only need last turn's results for positions and scores
+            t=0
+            for i in range(self.num_players):
+                player_id,T=position[i],int(t*self.m)
+                if position[i]!=self.id:
+                    if T<self.m/3:
+                        l,h=max(0,T-self.range),T+self.range+1
+                        self.P[player_id][1][i,l:h]+=self.xp[l-T+self.range:h-T+self.range]
+                        self.P[player_id][0][i,l:h]+=((scores[i]<t)-self.P[player_id][0][i,l:h])/self.P[player_id][1][i,l:h]
+                    else:
+                        self.P[player_id][1][i,T]+=1
+                        self.P[player_id][0][i,T]+=((scores[i]<t)-self.P[player_id][0][i,T])/self.P[player_id][1][i,T]
+                t=max(t,scores[i])
+        self.p=max(result)
+        if rank<self.num_players-1:
+            M=np.ones(self.m)
+            for j in range(rank+1,self.num_players):
+                M*=self.P[order[j]][0][j]
+            A=np.argmax(np.cumsum(M[::-1])[::-1]*self.e)+np.random.random_sample()
+            self.p=max(self.p,A/self.m)
+            
+    
+    def decision(self,hand):
+        if hand<self.p:
+            return True
+        return False 
+
 
     
 
     
-
+#----------------------------------------------------------------------------------------------------------------
 
 class Profile:
     def __init__(self,i,num_players,G,init_w,gridsize=1000,discount=0.99,pt_threshold=2500,lowbd_threshold=1500,cooldown=10000):
