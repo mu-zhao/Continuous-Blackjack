@@ -1,7 +1,9 @@
 
 #%%
 from scipy.integrate import quad 
+from itertools import combinations
 import numpy as np
+
 
 #----------------------------------------------------------------------
 def f(x,i,j):
@@ -11,7 +13,7 @@ def f1(x):
 def I(A,i,j):
     return f(A,i,j)-quad(f,A,1,args=(i,j))[0]
 
-def solution(n,error=10**(-5)):
+def solution(n,error=10**(-8)):
     res=np.zeros((n,n))
     for i in range(1,n):
         for j in range(i+1):
@@ -26,11 +28,13 @@ def solution(n,error=10**(-5)):
     return res
 #-------------------------------------------------------------------------------------
 class RandomStrategy:
+    """this strategy is used to testing
+    """
     def __init__(self,naivetype,switch=True):
         self.type=naivetype
         self.count=0
         self.switch=switch
-    def para(self,i,num_players,rounds):
+    def para(self,i,num_players):
         self.num=num_players
         self.p=0
         return self
@@ -42,7 +46,10 @@ class RandomStrategy:
         elif self.type==2:
             self.p=max(np.random.sample(),max(result))
         elif self.type==3:
-            self.p=0.5
+            if i%2==0:
+                self.p=0.5
+            else:
+                self.p=0
         if self.switch and self.count%100000==0:
             self.type=np.random.randint(4)
     def decision(self,hand):
@@ -52,49 +59,28 @@ class RandomStrategy:
         return False
 
 #---------------------------------------------------------------------------------------------------------
-
+class NaiveStrategy:
+    """ Used for testing
+    """
+    def __init__(self):
+        pass 
+    def para(self,i,num_players):
+        self.p=0
+        return self
+    def calibration(self,i,order,history,result,turn_reward):
+        self.p=max(result)
+    def decision(self,hand):
+        if hand<self.p:
+            return True
+        return False
 
 #-------------------------------------------------------------------------------------------------------------     
 
-class HuristicStrategy:
-    def __init__(self,naive=0.1):
-        self.naive=naive
-    def para(self,i,num_players,rounds):
-        self.num_players=num_players
-        return self 
-        
-    def calibration(self,i,order,history,result,turn_reward):
-        self.p=max(max(result)+self.naive,0.5)
-        self.p+=(1-self.p)*self.naive*np.random.sample()
 
-    def decision(self,hand):
-        if hand<self.p:
-            return True
-        return False
 
 #-------------------------------------------------------------------------------------------------------------
 
-class StatisticalStrategy:
-    """ does not work really.
-    """
-    def __init__(self,rate):
-        self.rate=rate 
-        self.count=0
-    def para(self,i,num_players,rounds):
-        self.record=np.zeros(num_players)
-        self.rounds=rounds 
-        return self 
-    def calibration(self,i,order,history,result,turn_reward):
-        if self.count>0:
-            w=history[-1][0]
-            self.record[w]+=self.rate*(history[-1][2][w]-self.record[w])
-        self.count+=1
-        self.rate*=(1-1/(1+self.count))
-        self.p=max(self.record[i],max(result))
-    def decision(self,hand):
-        if hand<self.p:
-            return True
-        return False
+
 
 
 #----------------------------------------------------------------------------------------------------------------
@@ -106,7 +92,7 @@ class NashEquilibrium:
     """
     def __init__(self,factor=1):
         self.factor=factor
-    def para(self,i,num_players,rounds):
+    def para(self,i,num_players):
         self.threshold=solution(num_players)[:,0]*self.factor
         return self 
     def calibration(self,i,order,history,result,turn_reward):
@@ -119,12 +105,13 @@ class NashEquilibrium:
 #--------------------------------------------------------------------------------------------------------
 class AdaptiveNasheqilibrium:
     """ This strategy make the assumption that a player either plays Nash Equilibrium 
-    or play a threshold uniformly chosen in [0,1]
+    or play a threshold uniformly chosen in [0,1]. More specifically, if rationality 
+    assumption is violated, the algorithm will mark it as uniform threshold player.
     """
     def __init__(self,confidence_level=1500):
         self.confidence_level=confidence_level
         self.count=0
-    def para(self,i,num_players,rounds):
+    def para(self,i,num_players):
         self.num_players=num_players
         self.id=i
         self.threshold=solution(num_players)
@@ -155,7 +142,11 @@ class AdaptiveNasheqilibrium:
 
 #-----------------------------------------------------------------------------------------------------------
 class ModelfreeStrategy:
-    """ This strategy is the most applicable one. 
+    """ This strategy is to estimate $L$ as opposed to $K$
+        the estimate of L(t) for small t is not as accurate as for that of larger t 
+        since there is less chance for the previous score to be small. therefore, by extrapolation
+        we can improve the estimation. Though the estimate of L for small t does not matter
+        too much as the max is likely to be obtained for large t where the estimate are relatively accurate.
     """
     def __init__(self,size=1000,initial_count=2,extrapolation_decay_factor=0.8,extrapolation_range=5):
         self.m=size # discretization size 
@@ -164,7 +155,7 @@ class ModelfreeStrategy:
         self.e=np.exp(np.arange(self.m)/self.m)
         self.range=extrapolation_range
         self.xp=extrapolation_decay_factor**abs(np.arange(-extrapolation_range,extrapolation_range+1))
-    def para(self,i,num_players,rounds):
+    def para(self,i,num_players):
         self.num_players=num_players
         self.id=i
         self.P={}# profiles
@@ -201,14 +192,16 @@ class ModelfreeStrategy:
         if hand<self.p:
             return True
         return False 
+#------------------------------------------------------------------------------------------
 
-
-    
-
-    
 #----------------------------------------------------------------------------------------------------------------
 
 class Profile:
+    """ this is the profile for AdaptiveStrategy, which is a profile of families of distributions.
+       To enhance the performance, I run two tests: lower bound assumption and point strategy assumption.
+       lower bound means rationality assumption holds
+       point bound means the opponents' strategies are not randomized. 
+    """
     def __init__(self,i,num_players,G,init_w,gridsize=1000,discount=0.99,pt_threshold=2500,lowbd_threshold=1500,cooldown=10000):
         self.Id=i 
         self.pt_threshold=pt_threshold
@@ -331,12 +324,10 @@ class Profile:
     
         
 
-
-
-
-
-
 class AdaptiveStrategy:
+    """This was the model free strategy,  made before I 
+        realized that the conditions can be imposed on L instead of the strategy K. 
+    """
     def __init__(self,girdsize=100,discount=0.9,init_w=10,pt_threshold=1500,lowbd_threshold=1000,cooldown=4000):
         self.grid=girdsize 
         self.discount=discount
@@ -351,7 +342,7 @@ class AdaptiveStrategy:
         for t in range(self.grid):
             self.G[t]=res
             self.G[t,:t]=(t/self.grid-temp[:t])*self.exp_temp[:t]
-    def para(self,Id,num_players,rounds):
+    def para(self,Id,num_players):
         self.Id=Id  
         self.nashequilibrum=solution(num_players)
         self.profiles=[Profile(i,num_players,self.G,self.init_w,self.grid,self.discount,self.pt_threshold,self.lowbd_threshold,self.cooldown) for i in range(num_players)]
@@ -406,86 +397,119 @@ class AdaptiveStrategy:
 
 
 class ReinforcementLearning:
-    def __init__(self,rl_type,exploration=0.15,init_reward=2,c=2,a=0.1,baseline=4):
+    """ This is the classic algorithm for k-armed bandit problem.
+    """
+    def __init__(self,rl_type,resource_limit=3,size=1000,exploration=0.15,init_reward=2,xp_dacay_rate=0.9,a=0.1,c=2,baseline=4):
+        self.resource_limit=resource_limit # how many positions into the rank we want to record
         self.count=0
         self.type=rl_type
         self.last_choice=None
         self.exploration=exploration
-        self.c=c 
-        self.a=a 
+        self.xp_decay=xp_dacay_rate
+        self.a=a # learning rate for gradient descent
         self.baseline=baseline 
         self.init_reward=init_reward 
+        self.m=size 
+        self.c=c
+        
 
 
-    def para(self,i,num_players,rounds):
+    def para(self,i,num_players):
         self.id=i 
         self.num_players=num_players
-        self.threshold=L[-num_players:]
-        self.bandits_rewards=np.zeros((self.num_players,31))+self.init_reward
-        self.bandits_num=np.zeros((self.num_players,31),dtype=int)+1 
+        self.dic={}
+        self.N=self.code()
+        self.bandits_rewards=np.zeros((self.N,self.m))+self.init_reward # row major for our purpose for speed
+        self.bandits_num=np.zeros((self.N,self.m),dtype=int)+1
         if self.type==2:
-            self.H=np.zeros((self.num_players,31))+self.baseline
-            self.dist=np.zeros((self.num_players,31))+1/31
+            self.H=np.zeros((self.N,self.m))+self.baseline
+            self.dist=np.zeros((self.N,self.m))+1/self.m
         return self 
 
     def calibration(self,rank,order,history,result,turn_reward):
         self.count+=1
-        if self.count%10000==0:
-            self.exploration*=0.95
+        if self.count%(self.m*self.N*20)==0:
+            self.exploration*=self.xp_decay
         if self.last_choice:
             winner,od=history[-1][:2]
             i,c=self.last_choice
-            if od[winner]==self.id:
-                r=1
-            else:
-                r=0
+            r=(od[winner]==self.id)
             self.bandits_rewards[i,c]+=(r-self.bandits_rewards[i,c])/self.bandits_num[i,c]
             if self.type==2:
                 self.H[i]-=self.a*(r-self.bandits_rewards[i][c]*self.dist[i])
                 self.H[i][c]+=self.a*(r-self.bandits_rewards[i][c])
-        self.p=max(result)
-        if rank==self.num_players-1: 
             self.last_choice=None 
-        else:
+        self.p=max(result)
+        if rank!=self.num_players-1: 
+            if rank<self.resource_limit:
+                row=self.dic[(tuple(sorted(order[:rank])),0)]
+            elif rank>=self.num_players-self.resource_limit:
+                row=self.dic[(tuple(sorted(order[rank+1:])),1)]
+            else:
+                row=self.dic[rank]
             if self.type==0:
-                self.greedy(rank)
+                self.greedy(row)
             elif self.type==1:
-                self.UCB(rank)
+                self.UCB(row)
             else:
-                self.gradient(rank)
-            new_p=self.threshold[rank]-0.0015*self.choice*0.9**rank
-            if new_p>self.p:
-                self.bandits_num[rank,self.choice]+=1
-                self.last_choice=(rank,self.choice)
-                self.p=new_p
-            else:
-                self.last_choice=None 
-    
+                self.gradient(row)
+            
+            
         
     def decision(self,hand):
         if hand<self.p:
             return True
         return False
 
-    def UCB(self,rank):
+    def UCB(self,row):
+        n=int(self.p*self.m)
         if np.random.sample()<self.exploration:
-            self.choice=np.random.randint(31)
+            choice=np.random.randint(n,self.m)
         else:
-            self.choice=np.argmax(self.bandits_rewards[rank]+self.c*np.sqrt(np.log(self.count)/self.bandits_num[rank]))
-   
+            choice=n+np.argmax(self.bandits_rewards[row][n:]+self.c*np.sqrt(np.log(self.count)/self.bandits_num[row][n:]))
+        self.p=max(self.p,(choice+np.random.sample())/self.m)
+        self.last_choice=(row,choice)
+        self.bandits_num[row,choice]+=1
 
 
-    def greedy(self,rank):
+    def greedy(self,row):
+
+        n=int(self.p*self.m)
         if np.random.sample()<self.exploration:
-            self.choice=np.random.randint(31)
+            choice=np.random.randint(n,self.m)
         else:
-            self.choice=np.argmax(self.bandits_rewards[rank])
+            choice=n+np.argmax(self.bandits_rewards[row][n:])
+        self.p=max(self.p,(choice+np.random.sample())/self.m)
+        self.last_choice=(row,choice)
+        self.bandits_num[row,choice]+=1
         
 
-    def gradient(self,rank):
-        self.dist[rank]=np.exp(self.H[rank])
-        self.dist[rank]/=sum(self.dist[rank])
-        self.choice=np.random.choice(31,1,p=self.dist[rank])
-        
+    def gradient(self,row):
+        n=int(self.p*self.m)
+        self.dist[row]=np.exp(self.H[row])
+        self.dist[row]/=sum(self.dist[row])
+        choice=n+np.random.choice(self.m-n,1,p=self.dist[row][n:]/sum(self.dist[row][n:]))
+        self.p=max(self.p,(choice+np.random.sample())/self.m)
+        self.last_choice=(row,choice)
+        self.bandits_num[row,choice]+=1
 
+    def code(self):
+        k=0
+        for j in range(self.resource_limit,self.num_players-self.resource_limit):
+            self.dic[j]=k
+            k+=1
+        L=[i for i in range(self.num_players) if i!=self.id]
+        for j in range(self.resource_limit):
+            for c in combinations(L,j):
+                for d in range(2):
+                    self.dic[(c,d)]=k
+                    k+=1 
+        return k 
+    def diagnosis(self):
+        if self.type==2:
+            return self.H, self.dist, self.bandits_num, self.bandits_rewards
+        return self.bandits_num, self.bandits_rewards
+    
+
+        
         
