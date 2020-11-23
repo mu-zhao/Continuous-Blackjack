@@ -7,4 +7,10 @@ Continuous Blackjack is a variant of the classic poker game blackjack. Here are 
 * players' scores are the total sums as long as they don't exceeds $1$, in which case the score will be $0$. At the end of each round, the player with the highest score receive one point.
 * In the rare scenario where two or more players get the same highest score, they will share the point equally among them.
 --------------------------
+
+### Files:
+1. commom.py is the platform on which the game is played.
+2. strategies.py is the file where the different strategies lie.
+3. test.py is the file to test different strategies.
+---------------------------
 More info can be found [https://arxiv.org/abs/2011.10315].
