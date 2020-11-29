@@ -12,8 +12,8 @@ class PlatForm:
         self.players=[player.para(Id,self.num_player) for Id,player in enumerate(players) ]
         
 
-    def run(self,num_thousand_rounds=1000):
-        self.rounds=num_thousand_rounds*1000
+    def run(self,num_thousand_rounds=10000):
+        self.rounds=num_thousand_rounds*10000
         self.record=np.zeros((num_thousand_rounds,self.num_player))
         start_time=time.time()
         for k in range(self.rounds):
@@ -36,8 +36,9 @@ class PlatForm:
             """
             self.bet_history=[(winner,np.copy(self.order),np.copy(self.bet_result),np.copy(self.cards))]
             self.rewards[self.order[winner],winner]+=self.turn_reward
-            if k%1000==0:
-                self.record[k//1000][:]=np.sum(self.rewards[:self.num_player],axis=1)/self.count
+            if k%10000==0:
+                self.record[k//10000][:]=np.sum(self.rewards[:self.num_player],axis=1)/self.count
+                self.turn_reward+=1
                 if k%1000000==0:
                     print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
             
