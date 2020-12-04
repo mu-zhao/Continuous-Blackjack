@@ -13,8 +13,8 @@ class PlatForm:
         
 
     def run(self,num_thousand_rounds=10000):
-        self.rounds=num_thousand_rounds*10000
-        self.record=np.zeros((num_thousand_rounds,self.num_player))
+        self.rounds=num_thousand_rounds*1000
+        self.record=np.zeros((1000,self.num_player))
         start_time=time.time()
         for k in range(self.rounds):
             self.count+=1
@@ -36,11 +36,11 @@ class PlatForm:
             """
             self.bet_history=[(winner,np.copy(self.order),np.copy(self.bet_result),np.copy(self.cards))]
             self.rewards[self.order[winner],winner]+=self.turn_reward
-            if k%10000==0:
-                self.record[k//10000][:]=np.sum(self.rewards[:self.num_player],axis=1)/self.count
+            if k%num_thousand_rounds==0:
+                self.record[k//num_thousand_rounds][:]=np.sum(self.rewards[:self.num_player],axis=1)
                 self.turn_reward+=1
                 if k%1000000==0:
-                    print('%s rounds done, %s s elapsed'%(k,np.round(time.time()-start_time,4)))
+                    print('%s million rounds done, %s s elapsed'%(k//1000000,np.round(time.time()-start_time,4)))
             
     def deal(self,i):
         strategy=self.players[self.order[i]] 
@@ -66,8 +66,8 @@ class PlatForm:
 
     def analysis(self):
         s=np.sum(self.rewards,axis=1)
-        print('total reward:\n ',s/self.count)
-        print('breakdown by rank:\n ',self.rewards)
+        print('total reward:\n ',s/s[0])
+        print('breakdown by rank:\n ',self.rewards/self.rewards[0])
         print('percentege breakdown: \n',self.rewards/s)
         return pd.DataFrame(self.record),self.rewards
         

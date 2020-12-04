@@ -459,10 +459,7 @@ class ContextualBandits:
 
     def UCB(self,row):
         n=int(self.p*self.m)
-        if np.random.sample()<self.exploration:
-            choice=np.random.randint(n,self.m)
-        else:
-            choice=n+np.argmax(self.bandits_rewards[row][n:]+self.c*np.sqrt(np.log(self.count)/self.bandits_num[row][n:]))
+        choice=n+np.argmax(self.bandits_rewards[row][n:]+self.c*np.sqrt(np.log(self.count)/self.bandits_num[row][n:]))
         self.p=max(self.p,(choice+np.random.sample())/self.m)
         self.last_choice=(row,choice)
         self.bandits_num[row,choice]+=1
@@ -530,8 +527,8 @@ class RLwithSD:
         self.N=self.code() #total number of bandits
         self.Bxp=np.zeros(self.N)+self.xp #exploration rate for each bandit
         self.M=np.zeros((self.N,4,self.m))# arm reward,count, interval left endpoint ,interval length
-        self.M[:,0,self.m//10:]+=self.init_r #initialize reward
-        self.M[:,1,:]=10 # initialize count
+        self.M[:,0,self.m//4:]=self.init_r #initialize reward
+        self.M[:,1,:]=5 # initialize count
         self.M[:,2,:]=np.arange(self.m)/self.m #initialize interval left endpoint
         self.M[:,3,:]=1/self.m #initialize interval length
         self.Bcount=np.zeros(self.N) # count for each bandit
@@ -561,30 +558,36 @@ class RLwithSD:
             else:
                 row=self.dic[rank]
             if self.type!=2:
-                self.exploration_exploitation(row,self.type)
+                self.exploration_exploitation(row)
             else:
                 self.gradient(row)
     
-    def exploration_exploitation(self,row,algo_type):
+    def exploration_exploitation(self,row):
         n=self.index(row)
         if n>=0:
-            if np.random.sample()<self.Bxp[row]:
-                max_reward_position=np.argmax(self.M[row,0])
-                if n<max_reward_position: # n<max_reward positions are underexplored 
-                    choice=n+np.argmin(self.M[row,1,n:max_reward_position]) # this is compensation.
-                else:
-                    choice=n
-            elif algo_type:  # UCB
+            if self.type: # UCB
                 choice=n+np.argmax(self.M[row,0,n:]+self.c*np.sqrt(np.log(self.Bcount[row])/self.M[row,1,n:]))
-            else: # greedy
-                choice=n+np.argmax(self.M[row,0,n:])
+            else: # epsilon greedy
+                ran_num=np.random.sample()
+                if ran_num<self.Bxp[row]:
+                    max_reward_position=np.argmax(self.M[row,0])
+                    if n<max_reward_position: # n<max_reward positions are underexplored 
+                        if ran_num<self.Bxp[row]/3:
+                            choice=n+np.argmin(self.M[row,1,n:max_reward_position]) # this is compensation.
+                        else:
+                            choice=np.random.randint(n,max_reward_position) #exploitation
+                    else:
+                        choice=n
+                else: # expolitation 
+                    choice=n+np.argmax(self.M[row,0,n:])
             self.p=max(self.p,self.M[row,2,choice]+self.M[row,3,choice]*np.random.sample())
             self.last_choice=(row,choice)
             self.M[row,1,choice]+=1
             self.Bcount[row]+=1
-            if self.Bcount[row]==self.Bsd[row,1]:
+            self.Bsd[row,1]-=1
+            if self.Bsd[row,1]==0:
                 self.split_and_dump(row)
-            if self.Bsd[row,0]==self.num_sd and self.Bcount[row]%(100*self.m)==0:
+            if self.type==0 and self.Bsd[row,0]==self.num_sd and self.Bcount[row]%(100*self.m)==0:
                 self.Bxp[row]*=self.decay
     
     def gradient(self,row):
@@ -597,7 +600,8 @@ class RLwithSD:
             self.p=max(self.p,self.M[row,2,choice]+self.M[row,3,choice]*np.random.sample())
             self.last_choice=(row,choice)
             self.M[row,1,choice]+=1
-            if self.Bcount[row]==self.Bsd[row,1]:
+            self.Bsd[row,1]-=1
+            if self.Bsd[row,1]==0:
                     self.split_and_dump(row)
  
     def index(self,row):
@@ -616,6 +620,7 @@ class RLwithSD:
         return np.argmin(self.p>=self.M[row,2])
     
     def split_and_dump(self,row):
+        
         """only dump the leftmost and rightmost arms in the bottom 20%
 
         Args:
@@ -624,12 +629,12 @@ class RLwithSD:
         
         performance=self.M[row,0].argsort() # rank of the arms by reward
         least_chosen=(self.M[row,1]).argsort()
-        print(least_chosen[:self.m//5])
+        print(least_chosen[:self.m//10])
         print('---------------------')
-        print(performance[:self.m//4])
+        print(performance[:self.m//5])
         s=np.zeros(self.m,dtype=int)
-        s[performance[:self.m//4]]=1 #lowest 25% performance 
-        s[least_chosen[:self.m//5]]=1 #lowset 20%
+        s[performance[:self.m//5]]=1 #lowest 20% performance 
+        s[least_chosen[:self.m//10]]=1 #lowset 10%
         under_perform=np.where(s==0)
         dump_left_limit=under_perform[0][0] #left of the limit will be dumped
         dump_right_limit=under_perform[0][-1]#right of the limit will be dumped
@@ -640,7 +645,7 @@ class RLwithSD:
         for k in performance[::-1]:
             if dump_left_limit<=k<=dump_right_limit: # it could happend that for small $t$, 
                 top_performance.append(k)           #  the performance is high because of sheer luck      
-                if len(top_performance)==num_dump:   # as there are few trails
+                if len(top_performance)>=num_dump:   # as there are few trails
                     break 
         if num_dump>0:
             temp=np.zeros((4,self.m)) # new armed bandit
@@ -652,7 +657,7 @@ class RLwithSD:
                 r=l+j-i 
                 temp[:,l:r]=self.M[row,:,i:j]
                 temp[0,r:r+2]=self.M[row,0,j]
-                temp[1,r:r+2]=self.M[row,1,j]//2
+                temp[1,r:r+2]=self.M[row,1,j]
                 temp[3,r:r+2]=self.M[row,3,j]/2
                 temp[2,r]=self.M[row,2,j]
                 temp[2,r+1]=sum(temp[2:,r])
@@ -671,11 +676,11 @@ class RLwithSD:
             self.Bcount[row]=sum(self.M[row,1])
             self.Bsd[row,0]+=1
             if self.Bsd[row,0]==self.num_sd:
-                self.Bsd[row,1]=0
+                self.Bsd[row,1]=-1
             else:
-                self.Bsd[row,1]+=self.m*100
+                self.Bsd[row,1]=self.m*100*self.Bsd[row,0]
         else:
-            self.Bsd[row,1]+=self.m*100
+            self.Bsd[row,1]=self.m*100
 
     def code(self):
         k=0
