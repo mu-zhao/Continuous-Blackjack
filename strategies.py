@@ -506,7 +506,7 @@ class ContextualBandits:
     
 #---------------------------------------------------------------------------------------------------------------
         
-class RLwithSD:  
+class RLwithPS:  
     def __init__(self,algo_type,size=100,resource_limit=3,xp_rate=0.15,
                  xp_decay=0.9,initial_reward=1,ucb_sigma=2,gradient_learning_rate=0.05,baseline=3,num_split_and_dump=8):
         self.m=size
@@ -586,7 +586,7 @@ class RLwithSD:
             self.Bcount[row]+=1
             self.Bsd[row,1]-=1
             if self.Bsd[row,1]==0:
-                self.split_and_dump(row)
+                self.policy_pruning_and_shrinking(row)
             if self.type==0 and self.Bsd[row,0]==self.num_sd and self.Bcount[row]%(100*self.m)==0:
                 self.Bxp[row]*=self.decay
     
@@ -602,7 +602,7 @@ class RLwithSD:
             self.M[row,1,choice]+=1
             self.Bsd[row,1]-=1
             if self.Bsd[row,1]==0:
-                    self.split_and_dump(row)
+                    self.policy_pruning_and_shrinking(row)
  
     def index(self,row):
         """ find which bucket any given real number is in.
@@ -615,11 +615,11 @@ class RLwithSD:
         """
         if self.p<self.M[row,2,1]:
             return 0
-        elif self.p>=sum(self.M[row,2:,-1]):
+        if self.p>=sum(self.M[row,2:,-1]):
             return -1
         return np.argmin(self.p>=self.M[row,2])
     
-    def split_and_dump(self,row):
+    def policy_pruning_and_shrinking(self,row):
         
         """only dump the leftmost and rightmost arms in the bottom 20%
 
