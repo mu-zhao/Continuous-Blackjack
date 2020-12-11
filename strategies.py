@@ -566,7 +566,7 @@ class RLwithPS:
         n=self.index(row)
         if n>=0:
             if self.type: # UCB
-                choice=n+np.argmax(self.M[row,0,n:]+self.c*np.sqrt(np.log(self.Bcount[row])/self.M[row,1,n:]))
+                choice=n+np.argmax(self.M[row,0,n:]+self.c*np.sqrt(np.log(self.Bcount[row])/self.M[row,1,n:])) # can be reduced to product without computational expensive operations, but not necessary
             else: # epsilon greedy
                 ran_num=np.random.sample()
                 if ran_num<self.Bxp[row]:
@@ -617,7 +617,7 @@ class RLwithPS:
             return 0
         if self.p>=sum(self.M[row,2:,-1]):
             return -1
-        return np.argmin(self.p>=self.M[row,2])
+        return np.argmin(self.p>=self.M[row,2]) # binary search is theoretically better, but not necessary
     
     def policy_pruning_and_shrinking(self,row):
         
@@ -629,17 +629,17 @@ class RLwithPS:
         
         performance=self.M[row,0].argsort() # rank of the arms by reward
         least_chosen=(self.M[row,1]).argsort()
-        print(least_chosen[:self.m//10])
-        print('---------------------')
-        print(performance[:self.m//5])
+        #print(least_chosen[:self.m//10])
+        #print('---------------------')
+        #print(performance[:self.m//5])
         s=np.zeros(self.m,dtype=int)
         s[performance[:self.m//5]]=1 #lowest 20% performance 
         s[least_chosen[:self.m//10]]=1 #lowset 10%
         under_perform=np.where(s==0)
         dump_left_limit=under_perform[0][0] #left of the limit will be dumped
         dump_right_limit=under_perform[0][-1]#right of the limit will be dumped
-        print(row,self.Bsd[row,0],dump_left_limit,dump_right_limit)
-        print('*************************')
+       # print(row,self.Bsd[row,0],dump_left_limit,dump_right_limit)
+       # print('*************************')
         num_dump=dump_left_limit+self.m-dump_right_limit-1
         top_performance=[]
         for k in performance[::-1]:
