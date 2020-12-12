@@ -12,7 +12,11 @@ Continuous Blackjack is a variant of the classic poker game blackjack. Here are 
 2. strategies.py is the file where the different strategies lie.
 3. test.py is the file to test different strategies.
 ---------------------------
+### Strategies:
 
+The strategies here are based on my paper [Continuous Blackjack: Equilibrium, Deviation and Adaptive Strategy](https://arxiv.org/abs/2011.10315)
+
+--------------------------
 
 ### Here's the template to write your own strategy
 
@@ -31,4 +35,4 @@ class YourStrategy:
         pass 
  ```
  ----
- More info can be found [https://arxiv.org/abs/2011.10315].
+
