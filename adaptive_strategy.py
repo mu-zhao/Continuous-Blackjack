@@ -146,6 +146,7 @@ class AdaptiveStrategy(BaseStrategy):
     """
     def __init__(self, girdsize=100, discount=0.9, init_w=10,
                  pt_threshold=1500, lowbd_threshold=1000, cooldown=4000):
+        super().__init__()
         self.grid = girdsize
         self.discount = discount
         self.init_w = init_w

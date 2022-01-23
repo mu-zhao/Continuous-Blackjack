@@ -12,9 +12,9 @@ class UniformStrategy(BaseStrategy):
         self._critical_value = 0
 
     def calibrate(self, position, order, cur_res, cur_round_hands, last_round):
-        if self.type == 'simple uniform':
+        if self.type == 'uninformed':
             self._critical_value = np.random.sample()
-        elif self.type == 'bounded uniform':
+        elif self.type == 'informed':
             self._critical_value = np.random.uniform(max(cur_res), 1)
 
 

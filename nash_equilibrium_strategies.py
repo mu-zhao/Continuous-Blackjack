@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.integrate import quad
 
-from common_utils import DynamicCVStartegy
+from common_utils import DynamicCVStartegy, BaseStrategy
 _NUMERIC_ERR = 1e-4
 
 
@@ -62,7 +62,7 @@ class NashEquilibrium(DynamicCVStartegy):
             lambda n: scaling_factor * critical_value_solution(n)[:, 0])
 
 
-class AdaptiveNasheqilibrium(DynamicCVStartegy):
+class AdaptiveNasheqilibrium(BaseStrategy):
     """ This strategy make the assumption that a player either Nash
      Equilibrium player or uniformend uniform player who pick a critical value
      uniformaly from $[0,1]$. More specifically, if rationality
@@ -73,13 +73,15 @@ class AdaptiveNasheqilibrium(DynamicCVStartegy):
         # The number of consecutive rounds for a player not violating
         # rationaality to be marked as nash player.
         self.confidence_rounds = 1000
-        super().__init__(critical_value_solution)
+        self._func_crit_value = critical_value_solution
+        super().__init__()
 
     def set_parameter(self):
         self.critical_value_table = self._func_crit_value(self._num_player)
         self.profiles = np.zeros(self._num_player, dtype=int)
 
-    def calibration(self, position, order, cur_res, cur_round_hands, last_round):
+    def calibrate(self, position, order, cur_res,
+                  cur_round_hands, last_round):
         self.process_history(last_round)
         # If a player' profile value < confidence_rounds, then the
         # player is condidered as uninformed player.

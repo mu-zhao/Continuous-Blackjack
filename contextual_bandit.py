@@ -4,11 +4,12 @@ import numpy as np
 from common_utils import BaseStrategy
 
 BanditHistory = namedtuple('BanditHistory', ['reward', 'count'])
-
+_SOFT = 1e-6
 
 class ContextualBandits(BaseStrategy):
     """Base contexutal bandit strategy"""
-    def __init__(self, size, resource_limit, init_reward):
+    def __init__(self, size=100, resource_limit=3, init_reward=2):
+        super().__init__()
         self.size = size
         self.resource_limit = resource_limit
         self._init_reward = init_reward
@@ -21,7 +22,7 @@ class ContextualBandits(BaseStrategy):
         # row major for performance
         self.bandits = BanditHistory(
             np.zeros((self.num_bandits, self.size)) + self._init_reward,
-            np.ones((self.num_bandits, self.size)), dtype=int)
+            np.ones((self.num_bandits, self.size), dtype=int))
 
     def calibrate(self, position, order, cur_res, cur_round_hands, last_round):
         self.rounds_done += 1
@@ -30,9 +31,10 @@ class ContextualBandits(BaseStrategy):
         self._critical_value = max(cur_res)
         if position < self._num_player - 1:
             if position < self.resource_limit:
-                bandit_idx = self.dict[tuple(sorted(order[:position]), 0)]
+                bandit_idx = self.dict[(tuple(sorted(order[:position])), 0)]
             elif position >= self._num_player - self.resource_limit:
-                bandit_idx = self.dict[tuple(sorted(order[position + 1:]), 1)]
+                bandit_idx = self.dict[
+                    (tuple(sorted(order[position + 1:])), 1)]
             else:
                 bandit_idx = self.dict[position]
             low_action_index = int(self._critical_value * self.size)
@@ -55,13 +57,13 @@ class ContextualBandits(BaseStrategy):
         k = 0
         for j in range(self.resource_limit,
                        self._num_player - self.resource_limit):
-            self.dic[j] = k
+            self.dict[j] = k
             k += 1
         L = [i for i in range(self._num_player) if i != self._player_id]
         for j in range(self.resource_limit):
             for c in combinations(L, j):
                 for d in range(2):
-                    self.dic[(c, d)] = k
+                    self.dict[(c, d)] = k
                     k += 1
         return k
 
@@ -86,10 +88,10 @@ class Greedy(ContextualBandits):
         if np.random.sample() < self.xp:
             return np.random.randint(low_action_index, self.size)
         return low_action_index + np.argmax(
-            self.bandits.reward[bandit_index,low_action_index:])
+            self.bandits.reward[bandit_index, low_action_index:])
 
 
-class UCB(ContextualBandits):
+class UCBStrategy(ContextualBandits):
     def __init__(self, confidence_level, *args):
         self.c = confidence_level
         super().__init__(*args)
@@ -102,9 +104,9 @@ class UCB(ContextualBandits):
 
 
 class PolicyGradient(ContextualBandits):
-    def __init__(self, baseline, learning_rate, *args):
+    def __init__(self, baseline, lr, *args):
         self.baseline = baseline
-        self.lr = learning_rate
+        self.lr = lr
         super().__init__(*args)
 
     def set_parameter(self):
@@ -112,7 +114,7 @@ class PolicyGradient(ContextualBandits):
         self.H = np.zeros((self.num_bandits, self.size)) + self.baseline
 
     def action(self, bandit_index, low_action_index):
-        action_porb = np.exp(self.H[bandit_index, low_action_index:])
+        action_porb = np.exp(self.H[bandit_index, low_action_index:]) + _SOFT
         action_porb /= sum(action_porb)
         return low_action_index + np.random.choice(
             self.size - low_action_index, 1, p=action_porb)
@@ -125,3 +127,5 @@ class PolicyGradient(ContextualBandits):
             np.exp(self.H[bandit_idx]))
         self.H[self.last_state_action] += self.lr * (
             self.pre_reward - self.bandits.reward[self.last_state_action])
+        if self.H[bandit_idx].max() > 5 * self.baseline:
+            self.H[bandit_idx] -= 4 * self.baseline

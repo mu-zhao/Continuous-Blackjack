@@ -23,6 +23,7 @@ class StatisticalStrategy(BaseStrategy):
     """
     def __init__(self, discretization_size=1000, extraplation_limt=0.2,
                  xp_decay_factor=0.8, extrapolation_range=5):
+        super().__init__()
         self.size = discretization_size
         self.exp_val = np.exp(np.arange(self.size) / self.size)
         self.range = extrapolation_range
@@ -35,9 +36,9 @@ class StatisticalStrategy(BaseStrategy):
         self.profiles = [0] * self._num_player
         for player_id in range(self._num_player):
             if player_id != self._player_id:
-                self.profile[player_id] = Profile([
+                self.profiles[player_id] = Profile(
                     np.zeros((self._num_player, self.size)),
-                    np.ones((self._num_player, self.size))])
+                    np.ones((self._num_player, self.size)))
 
     def calibrate(self, position, order, cur_res, cur_round_hands, last_round):
         self.process_history(last_round)

@@ -5,7 +5,7 @@ import numpy as np
 
 class BaseStrategy:
     def __init__(self):
-        self._fast_deal = False
+        self._fast_deal = True
         self._critical_value = 0
 
     def initialize_stategy(self, player_id, num_players):
@@ -36,6 +36,7 @@ class BaseStrategy:
 
 class RandomizedStrategy(BaseStrategy):
     def __init__(self, alternative_strategies, switch_num):
+        super().__init__()
         self._alt_strategies = alternative_strategies
         self.switch_num = switch_num
 
@@ -59,7 +60,7 @@ class CritValueStrategy(BaseStrategy):
     """(Static) critical value strategy, critical value is predetermined."""
     def __init__(self, func_crit_value):
         self._func_crit_value = func_crit_value
-        self._fast_deal = True
+        super().__init__()
 
     def set_parameter(self):
         self.static_crit_values = self._func_crit_value(self._num_player)
