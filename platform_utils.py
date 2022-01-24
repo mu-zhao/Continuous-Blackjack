@@ -87,5 +87,8 @@ class PlatForm:
         print('percentege breakdown: \n', self._reward_breakdown / s)
         df_sec_view = pd.DataFrame(
             self._sec_reward_history * self._num_player - 1)
-        df_sec_view.plot()
+        # For better view
+        y_min = np.min(df_sec_view.values) * 1.1
+        y_max = np.max(df_sec_view.values) * 1.1
+        df_sec_view.plot(figsize=(12, 4), ylim=(y_min, y_max))
         return pd.DataFrame(self._reward_breakdown)

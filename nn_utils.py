@@ -5,8 +5,7 @@ import numpy as np
 from common_utils import BaseStrategy
 
 rng = np.random.default_rng()
-PastEps = namedtuple('PastExperience',
-                     ['state', 'log_prob', 'entropy', 'reward'])
+PastEps = namedtuple('PastExperience', ['state', 'reward'])
 Experience = namedtuple('Experience', ('state', 'action', 'reward'))
 
 
