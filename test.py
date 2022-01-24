@@ -23,24 +23,24 @@ SS = StatisticalStrategy()
 UCB = UCBStrategy(confidence_level=3)
 GD = Greedy(xp=0.1, xp_decay=0.99, xp_decay_rounds=10000)
 PG = PolicyGradient(baseline=1, lr=0.01)
-DQN = DQNStrategy(output_size=1024, lr=0.001)
+DQN = DQNStrategy(output_size=1024, lr=0.005)
 ACS = ACStrategy(output_size=1024, alpha=0.01, beta=0.01)
 
 
 Strategy_sets = [
-    [NE, UnUF, UF, SS],
-    [UnUF, UF, NE, GD],
-    [ZS, NE, ADNE],
-    [ZS, NS, UCB],
-    [UnUF, UF, NS, PG],
-    [UnUF, ZS, NE, DQN],
-    [UnUF, ZS, NE, ACS],
-    [NE, ZS, ZS, ZS, NS],
+    [NE, NS, UnUF, UF, SS],
+    [NE, UnUF, UF, NE, GD],
+    [NE, ZS, ZS, NE, ADNE],
+    [NE, ZS, NS, UnUF, UCB],
+    [NE, UnUF, UF, NS, PG],
+    [NE, UnUF, ZS, UCB, DQN],
+    [NE, UnUF, ZS, GD, ACS],
+    [NE, ZS, ZS, ZS, ACS],
     [NE, UF, UCB, SS, DQN]
 ]
 #%%
-Game = PF(Strategy_sets[7])
-Game.run(num_10k_rounds=1000, log=False)
+Game = PF(Strategy_sets[6])
+Game.run(num_10k_rounds=10, log=True)
 Game.post_game_analysis()
 
 # %%

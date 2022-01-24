@@ -84,30 +84,30 @@ class ActorCritic():
 
     def process(self, last_reward):
         if self.last_record:
-            self.memory.push(PastEps(*self.last_record, last_reward))
+            self.memory.push(PastEps(self.last_record[0], last_reward))
         if len(self.memory) < self.batch_size:
             return
         batch_experience = self.memory.sample(self.batch_size)
         batch = PastEps(*zip(*batch_experience))
-        entropy_batch = torch.tensor(batch.entropy, requires_grad=True)
         state_batch = torch.stack(batch.state)
-        reward_batch = torch.tensor(batch.reward).double()
-        log_prob_batch = torch.tensor(batch.log_prob, requires_grad=True)
+        reward_batch = torch.tensor(batch.reward).double().reshape(-1, 1)
         # State values from critic
         state_values = self.critic(state_batch)
         # value(critic) loss
-        value_loss = self.mse(state_values, reward_batch.reshape(-1, 1))
+        value_loss = self.mse(state_values, reward_batch)
+        self.critic.reinforce(value_loss)
         # the policy gradeint loss function of policy(actor) is
         #  -loglikihood * advantage,
         # (since we want to maximize), whose gradeint is exactly the
         #  policy gradient.
-        advantage = reward_batch - state_values.detach()
-        policy_gredient_loss = -(log_prob_batch * advantage).mean()
+        state, log_prob, entropy = self.last_record
+        with torch.no_grad():
+            advantage = last_reward - self.critic(state)
+        policy_gredient_loss = -log_prob * advantage
         # entropy loss
-        entropy_loss = -entropy_batch.mean()
+        entropy_loss = -entropy
         # policy(actor) loss
         policy_loss = policy_gredient_loss + entropy_loss
-        self.critic.reinforce(value_loss)
         self.actor.reinforce(policy_loss)
 
     def action(self, state):
