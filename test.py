@@ -4,7 +4,7 @@ from nash_equilibrium_strategies import NashEquilibrium, AdaptiveNasheqilibrium
 from simple_test_strategies import (
     UniformStrategy, ZeroIntelStrategy, NaiveStrategy)
 from adaptive_strategy import AdaptiveStrategy
-from actor_acritic import ACStrategy
+from actor_critic import ACStrategy
 from QDN import DQNStrategy
 from statistical_strategy import StatisticalStrategy
 from contextual_bandit import Greedy, UCBStrategy, PolicyGradient

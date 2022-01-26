@@ -1,7 +1,6 @@
 """PlatForm for continous blackjack"""
 
 import time
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -52,7 +51,7 @@ class PlatForm:
                     cur_time - start_time))
                 start_time = cur_time
                 print('cumulative result up to %s 10k rounds:' % k,
-                    self._sec_reward_history[k - 1])
+                      self._sec_reward_history[k - 1])
 
     def play_single_round(self):
         for position in range(self._num_player):
@@ -73,6 +72,7 @@ class PlatForm:
         if strategy.fast_deal:
             critical_index = np.argmax(self._pre_hands[position] >
                                        strategy.critical_value)
+            return critical_index
         # Here card is the cumulative hand.
         for critical_index, card in enumerate(self._pre_hands[position]):
             if card > 1 or strategy.decision(card):
