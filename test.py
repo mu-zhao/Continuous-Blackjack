@@ -23,8 +23,8 @@ SS = StatisticalStrategy()
 UCB = UCBStrategy(confidence_level=3)
 GD = Greedy(xp=0.1, xp_decay=0.99, xp_decay_rounds=10000)
 PG = PolicyGradient(baseline=1, lr=0.01)
-DQN = DQNStrategy(output_size=1024, lr=0.005)
-ACS = ACStrategy(output_size=1024, alpha=0.01, beta=0.01)
+DQN = DQNStrategy(output_size=1024, lr=0.001)
+ACS = ACStrategy(output_size=1024, alpha=0.001, beta=0.001)
 
 
 Strategy_sets = [
@@ -40,7 +40,7 @@ Strategy_sets = [
 ]
 #%%
 Game = PF(Strategy_sets[6])
-Game.run(num_10k_rounds=10, log=True)
+Game.run(num_10k_rounds=100, log=True)
 Game.post_game_analysis()
 
 # %%

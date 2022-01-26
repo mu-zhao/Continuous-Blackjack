@@ -15,9 +15,9 @@ class ActorNN(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, 64),
+            nn.Linear(32, 128),
             nn.ReLU(),
-            nn.Linear(64, output_size),
+            nn.Linear(128, output_size),
             nn.Softmax(dim=0)
         )
         self.optimizer = optim.Adam(self.parameters(), lr)

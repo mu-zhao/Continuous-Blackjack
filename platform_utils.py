@@ -42,16 +42,17 @@ class PlatForm:
                                     tuple(self._post_hands))
                 # Update reward history
                 self._cum_reward[self.order[winner_position]] += 1
+                self._sec_reward_history[
+                    k - 1, self.order[winner_position]] += 1
                 self._reward_breakdown[self.order[winner_position],
                                        winner_position] += 1
-            self._sec_reward_history[k - 1] = self._cum_reward / (k * 10000)
             cur_time = time.time()
             if log:
                 print('current 10krounds take %s seconds' % (
                     cur_time - start_time))
                 start_time = cur_time
-                print('cumulative result up to %s 10k rounds:' % k,
-                      self._sec_reward_history[k - 1])
+                print('current %s-th 10k rounds:' % k,
+                      self._sec_reward_history[k - 1] / 10000)
 
     def play_single_round(self):
         for position in range(self._num_player):
