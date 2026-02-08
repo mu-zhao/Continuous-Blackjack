@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=75", "wheel>=0.45"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "continuous-blackjack"
+version = "0.1.0"
+description = "Strategy simulation framework for continuous blackjack"
+readme = "README.md"
+requires-python = ">=3.14"
+license = { file = "LICENSE" }
+dependencies = [
+  "numpy>=2.1",
+  "scipy>=1.14",
+]
+
+[project.optional-dependencies]
+analysis = ["pandas>=2.2"]
+rl = ["torch>=2.6"]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.8",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["continuous_blackjack*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

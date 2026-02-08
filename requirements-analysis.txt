@@ -1,0 +1,3 @@
+# Analysis dependencies
+-r requirements.txt
+pandas>=2.2
